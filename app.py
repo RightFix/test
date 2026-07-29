@@ -4,7 +4,7 @@ from PIL import Image
 import tensorflow as tf
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-THRESHOLD = 0.7
+THRESHOLD = 0.8
 IMG_SIZE = (224, 224)
 
 # ── Page config ───────────────────────────────────────────────────────────────
@@ -163,8 +163,9 @@ if uploaded:
         raw = model.predict(img_array, verbose=0)[0]
 
     # Softmax output shape (2,): [P(not_cracked), P(cracked)]
-    p_not_cracked = float(raw[0])
-    p_cracked     = float(raw[1])
+    p_not_cracked = float(raw[1])
+    p_cracked     = float(raw[0])
+
     max_prob      = max(p_not_cracked, p_cracked)
 
     if max_prob < THRESHOLD:
