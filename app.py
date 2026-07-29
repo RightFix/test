@@ -151,11 +151,18 @@ if uploaded:
     img_array = np.expand_dims(img_array, axis=0)
 
     with st.spinner("Analysing…"):
-        prediction = model.predict(img_array, verbose=0)[0][0]
+        raw = model.predict(img_array, verbose=0)[0]
+
+    # Model uses softmax → output shape (2,): [P(not_cracked), P(cracked)]
+    # If the model was trained with a single sigmoid unit instead, fall back gracefully.
+    if raw.ndim == 0 or len(raw) == 1:
+        prediction = float(raw)          # sigmoid case
+    else:
+        prediction = float(raw[1])       # softmax: take cracked probability
 
     # score close to 1 → cracked, close to 0 → not_cracked
-    is_cracked   = prediction >= 0.5
-    confidence   = prediction if is_cracked else 1 - prediction
+    is_cracked    = prediction >= 0.5
+    confidence    = prediction if is_cracked else 1.0 - prediction
     score_display = f"{prediction:.4f}"
 
     if is_cracked:
