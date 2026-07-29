@@ -151,14 +151,25 @@ st.title("Potato Leaf Classifier")
 st.caption("MobileNetV3Small · Transfer Learning · Binary Classification")
 st.divider()
 
-# ── Upload — native Streamlit ─────────────────────────────────────────────────
-uploaded = st.file_uploader(
-    label="Upload a potato leaf image",
-    type=["jpg", "jpeg", "png", "webp"],
-)
+# ── Input — upload or camera ──────────────────────────────────────────────────
+tab_upload, tab_camera = st.tabs(["Upload Image", "Take Photo"])
 
-if uploaded:
-    image = Image.open(uploaded)
+image = None
+
+with tab_upload:
+    uploaded = st.file_uploader(
+        label="Upload a potato leaf image",
+        type=["jpg", "jpeg", "png", "webp"],
+    )
+    if uploaded:
+        image = Image.open(uploaded)
+
+with tab_camera:
+    captured = st.camera_input("Point camera at a potato leaf")
+    if captured:
+        image = Image.open(captured)
+
+if image:
 
     # Run inference before rendering any layout
     result = None
