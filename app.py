@@ -132,10 +132,10 @@ st.markdown("""
 def load_model():
     return tf.keras.models.load_model(MODEL_PATH)
 
-# ── Preprocessing (same pattern as the working potato app) ────────────────────
+# ── Preprocessing ─────────────────────────────────────────────────────────────
 def preprocess(image: Image.Image) -> np.ndarray:
     img = image.convert("RGB").resize(IMG_SIZE)
-    arr = np.array(img, dtype=np.float32)   # NO /255 — match training pipeline
+    arr = np.array(img, dtype=np.float32)   # NO /255
     return np.expand_dims(arr, axis=0)
 
 model = load_model()
@@ -160,7 +160,10 @@ with tab_upload:
         type=["jpg", "jpeg", "png", "bmp", "webp"],
         label_visibility="collapsed",
     )
-    st.markdown('<p class="upload-hint">Supported formats: JPG · PNG · BMP · WEBP</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="upload-hint">Supported formats: JPG · PNG · BMP · WEBP</p>',
+        unsafe_allow_html=True,
+    )
     if uploaded:
         image = Image.open(uploaded)
         caption = uploaded.name
@@ -173,24 +176,21 @@ with tab_camera:
 
 # ── Inference ─────────────────────────────────────────────────────────────────
 if image:
-    col_img, _ = st.columns([1, 0.05])
-    with col_img:
-        st.image(image, width="stretch", caption=caption)
+    st.image(image, width="stretch", caption=caption)
 
     with st.spinner("Analysing..."):
         tensor = preprocess(image)
-        raw    = model.predict(tensor, verbose=0)[0]   # shape (2,)
+        raw = model.predict(tensor, verbose=0)[0]
 
-    # Softmax: index order must match CLASS_NAMES / training class_indices
-    p_cracked     = float(raw[0])
+    p_cracked = float(raw[0])
     p_not_cracked = float(raw[1])
-    max_prob      = max(p_cracked, p_not_cracked)
-    pred_idx      = int(np.argmax(raw))
+    max_prob = max(p_cracked, p_not_cracked)
+    pred_idx = int(np.argmax(raw))
 
     if max_prob < THRESHOLD:
         label = "unrecognised"
         score = max_prob
-    elif pred_idx == 0:          # CLASS_NAMES[0] == "cracked"
+    elif pred_idx == 0:
         label = "cracked"
         score = p_cracked
     else:
@@ -261,4 +261,7 @@ else:
     """, unsafe_allow_html=True)
 
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
-st.markdown('<div class="footer">Custom CNN · Trained on Concrete Crack Dataset · 96.47% accuracy</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="footer">Custom CNN · Trained on Concrete Crack Dataset · 96.47% accuracy</div>',
+    unsafe_allow_html=True,
+)
