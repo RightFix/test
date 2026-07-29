@@ -4,8 +4,10 @@ from PIL import Image
 import tensorflow as tf
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-THRESHOLD = 0.8
-IMG_SIZE = (224, 224)
+MODEL_PATH  = "custom_cnn_best.keras"
+IMG_SIZE    = (224, 224)
+THRESHOLD   = 0.7
+CLASS_NAMES = ["cracked", "not_cracked"]   # must match training class order
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -129,7 +131,13 @@ st.markdown("""
 # ── Model loading ─────────────────────────────────────────────────────────────
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("custom_cnn_best.keras")
+    return tf.keras.models.load_model(MODEL_PATH)
+
+# ── Preprocessing (same pattern as the working potato app) ────────────────────
+def preprocess(image: Image.Image) -> np.ndarray:
+    img = image.convert("RGB").resize(IMG_SIZE)
+    arr = np.array(img, dtype=np.float32)   # NO /255 — match training pipeline
+    return np.expand_dims(arr, axis=0)
 
 model = load_model()
 
@@ -151,35 +159,37 @@ st.markdown('<p class="upload-hint">Supported formats: JPG · PNG · BMP · WEBP
 
 # ── Inference ─────────────────────────────────────────────────────────────────
 if uploaded:
-    image = Image.open(uploaded).convert("RGB")
+    image = Image.open(uploaded)
+
     col_img, _ = st.columns([1, 0.05])
     with col_img:
         st.image(image, use_container_width=True, caption=uploaded.name)
 
-    img_array = np.array(image.resize(IMG_SIZE)) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
-
     with st.spinner("Analysing…"):
-        raw = model.predict(img_array, verbose=0)[0]
+        tensor = preprocess(image)
+        raw    = model.predict(tensor, verbose=0)[0]   # shape (2,)
 
-    # Softmax output shape (2,): [P(not_cracked), P(cracked)]
-    p_not_cracked = float(raw[1])
+    # Softmax: index order must match CLASS_NAMES / training class_indices
     p_cracked     = float(raw[0])
-
-    max_prob      = max(p_not_cracked, p_cracked)
+    p_not_cracked = float(raw[1])
+    max_prob      = max(p_cracked, p_not_cracked)
+    pred_idx      = int(np.argmax(raw))
 
     if max_prob < THRESHOLD:
         label = "unrecognised"
-    elif p_cracked >= THRESHOLD:
+        score = max_prob
+    elif pred_idx == 0:          # CLASS_NAMES[0] == "cracked"
         label = "cracked"
+        score = p_cracked
     else:
         label = "not_cracked"
+        score = p_not_cracked
 
     if label == "cracked":
         st.markdown(f"""
         <div class="result-box result-cracked">
             <div class="result-label">⚠️ Cracked</div>
-            <div class="score-mono">{p_cracked:.4f}</div>
+            <div class="score-mono">{score:.4f}</div>
             <div class="result-sub">Crack probability (threshold = {THRESHOLD})</div>
         </div>
         """, unsafe_allow_html=True)
@@ -187,7 +197,7 @@ if uploaded:
         st.markdown(f"""
         <div class="result-box result-safe">
             <div class="result-label">✅ Not Cracked</div>
-            <div class="score-mono">{p_not_cracked:.4f}</div>
+            <div class="score-mono">{score:.4f}</div>
             <div class="result-sub">Healthy probability (threshold = {THRESHOLD})</div>
         </div>
         """, unsafe_allow_html=True)
@@ -195,7 +205,7 @@ if uploaded:
         st.markdown(f"""
         <div class="result-box result-unknown">
             <div class="result-label">❓ Unrecognised</div>
-            <div class="score-mono">{max_prob:.4f}</div>
+            <div class="score-mono">{score:.4f}</div>
             <div class="result-sub">Max confidence below threshold ({THRESHOLD})</div>
         </div>
         """, unsafe_allow_html=True)
@@ -209,7 +219,11 @@ if uploaded:
     """, unsafe_allow_html=True)
 
     with st.expander("Model details"):
-        st.markdown("""
+        st.markdown(f"""
+        **Raw softmax:** `[{raw[0]:.6f}, {raw[1]:.6f}]`
+
+        **Class order:** `{CLASS_NAMES}`
+
         | Metric | Value |
         |---|---|
         | Accuracy | 96.47% |
@@ -227,7 +241,6 @@ if uploaded:
         *Evaluated on 1,502 test samples.*
         """)
 
-# ── Empty state ───────────────────────────────────────────────────────────────
 else:
     st.markdown("""
     <div style="text-align:center; padding: 2rem 0; color: #4b5563;">
