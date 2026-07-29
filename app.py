@@ -3,6 +3,10 @@ import numpy as np
 from PIL import Image
 import tensorflow as tf
 
+# ── Constants ─────────────────────────────────────────────────────────────────
+THRESHOLD = 0.7
+IMG_SIZE = (224, 224)
+
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Concrete Crack Detector",
@@ -50,6 +54,10 @@ st.markdown("""
         background: #071a10;
         border: 1.5px solid #22c55e;
     }
+    .result-unknown {
+        background: #1a1a0a;
+        border: 1.5px solid #eab308;
+    }
     .result-label {
         font-size: 1.5rem;
         font-weight: 700;
@@ -57,6 +65,7 @@ st.markdown("""
     }
     .result-cracked .result-label { color: #ef4444; }
     .result-safe    .result-label { color: #22c55e; }
+    .result-unknown .result-label { color: #eab308; }
     .result-sub {
         font-size: 0.85rem;
         color: #9ca3af;
@@ -69,6 +78,7 @@ st.markdown("""
     }
     .result-cracked .score-mono { color: #f87171; }
     .result-safe    .score-mono { color: #4ade80; }
+    .result-unknown .score-mono { color: #facc15; }
 
     .metric-row {
         display: flex;
@@ -122,7 +132,6 @@ def load_model():
     return tf.keras.models.load_model("custom_cnn_best.keras")
 
 model = load_model()
-IMG_SIZE = (224, 224)
 
 # ── Hero ──────────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -154,35 +163,47 @@ if uploaded:
         raw = model.predict(img_array, verbose=0)[0]
 
     # Softmax output shape (2,): [P(not_cracked), P(cracked)]
-    prediction = float(raw[1])   # cracked class probability
+    p_not_cracked = float(raw[0])
+    p_cracked     = float(raw[1])
+    max_prob      = max(p_not_cracked, p_cracked)
 
-    # score close to 1 → cracked, close to 0 → not_cracked
-    is_cracked    = prediction >= 0.7
-    confidence    = prediction if is_cracked else 1.0 - prediction
-    score_display = f"{prediction:.4f}"
+    if max_prob < THRESHOLD:
+        label = "unrecognised"
+    elif p_cracked >= THRESHOLD:
+        label = "cracked"
+    else:
+        label = "not_cracked"
 
-    if is_cracked:
+    if label == "cracked":
         st.markdown(f"""
         <div class="result-box result-cracked">
             <div class="result-label">⚠️ Cracked</div>
-            <div class="score-mono">{score_display}</div>
-            <div class="result-sub">Crack score (closer to 1.0 = more severe)</div>
+            <div class="score-mono">{p_cracked:.4f}</div>
+            <div class="result-sub">Crack probability (threshold = {THRESHOLD})</div>
+        </div>
+        """, unsafe_allow_html=True)
+    elif label == "not_cracked":
+        st.markdown(f"""
+        <div class="result-box result-safe">
+            <div class="result-label">✅ Not Cracked</div>
+            <div class="score-mono">{p_not_cracked:.4f}</div>
+            <div class="result-sub">Healthy probability (threshold = {THRESHOLD})</div>
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown(f"""
-        <div class="result-box result-safe">
-            <div class="result-label">✅ Not Cracked</div>
-            <div class="score-mono">{score_display}</div>
-            <div class="result-sub">Crack score (closer to 0.0 = healthy surface)</div>
+        <div class="result-box result-unknown">
+            <div class="result-label">❓ Unrecognised</div>
+            <div class="score-mono">{max_prob:.4f}</div>
+            <div class="result-sub">Max confidence below threshold ({THRESHOLD})</div>
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown(f"""
     <div class="metric-row">
-        <div class="metric-pill">Confidence<span>{confidence*100:.1f}%</span></div>
-        <div class="metric-pill">Raw Score<span>{prediction:.4f}</span></div>
-        <div class="metric-pill">Threshold<span>0.5000</span></div>
+        <div class="metric-pill">P(Cracked)<span>{p_cracked*100:.1f}%</span></div>
+        <div class="metric-pill">P(Not Cracked)<span>{p_not_cracked*100:.1f}%</span></div>
+        <div class="metric-pill">Threshold<span>{THRESHOLD:.1f}</span></div>
     </div>
     """, unsafe_allow_html=True)
 
