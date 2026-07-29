@@ -6,13 +6,12 @@ import tensorflow as tf
 # ── Constants ─────────────────────────────────────────────────────────────────
 MODEL_PATH  = "custom_cnn_best.keras"
 IMG_SIZE    = (224, 224)
-THRESHOLD   = 0.7
+THRESHOLD   = 0.6
 CLASS_NAMES = ["cracked", "not_cracked"]   # must match training class order
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Concrete Crack Detector",
-    page_icon="🔍",
     layout="centered",
 )
 
@@ -144,28 +143,41 @@ model = load_model()
 # ── Hero ──────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="hero">
-    <h1>🔍 Concrete Crack Detector</h1>
-    <p>Upload a concrete surface image — the model will tell you whether it is cracked.</p>
+    <h1>Concrete Crack Detector</h1>
+    <p>Upload a concrete surface image or take a photo — the model will tell you whether it is cracked.</p>
 </div>
 """, unsafe_allow_html=True)
 
-# ── Upload ────────────────────────────────────────────────────────────────────
-uploaded = st.file_uploader(
-    "Choose an image",
-    type=["jpg", "jpeg", "png", "bmp", "webp"],
-    label_visibility="collapsed",
-)
-st.markdown('<p class="upload-hint">Supported formats: JPG · PNG · BMP · WEBP</p>', unsafe_allow_html=True)
+# ── Input — upload or camera ──────────────────────────────────────────────────
+tab_upload, tab_camera = st.tabs(["Upload Image", "Take Photo"])
+
+image = None
+caption = None
+
+with tab_upload:
+    uploaded = st.file_uploader(
+        "Choose an image",
+        type=["jpg", "jpeg", "png", "bmp", "webp"],
+        label_visibility="collapsed",
+    )
+    st.markdown('<p class="upload-hint">Supported formats: JPG · PNG · BMP · WEBP</p>', unsafe_allow_html=True)
+    if uploaded:
+        image = Image.open(uploaded)
+        caption = uploaded.name
+
+with tab_camera:
+    captured = st.camera_input("Point camera at a concrete surface")
+    if captured:
+        image = Image.open(captured)
+        caption = "Camera capture"
 
 # ── Inference ─────────────────────────────────────────────────────────────────
-if uploaded:
-    image = Image.open(uploaded)
-
+if image:
     col_img, _ = st.columns([1, 0.05])
     with col_img:
-        st.image(image, use_container_width=True, caption=uploaded.name)
+        st.image(image, width="stretch", caption=caption)
 
-    with st.spinner("Analysing…"):
+    with st.spinner("Analysing..."):
         tensor = preprocess(image)
         raw    = model.predict(tensor, verbose=0)[0]   # shape (2,)
 
@@ -188,7 +200,7 @@ if uploaded:
     if label == "cracked":
         st.markdown(f"""
         <div class="result-box result-cracked">
-            <div class="result-label">⚠️ Cracked</div>
+            <div class="result-label">Cracked</div>
             <div class="score-mono">{score:.4f}</div>
             <div class="result-sub">Crack probability (threshold = {THRESHOLD})</div>
         </div>
@@ -196,7 +208,7 @@ if uploaded:
     elif label == "not_cracked":
         st.markdown(f"""
         <div class="result-box result-safe">
-            <div class="result-label">✅ Not Cracked</div>
+            <div class="result-label">Not Cracked</div>
             <div class="score-mono">{score:.4f}</div>
             <div class="result-sub">Healthy probability (threshold = {THRESHOLD})</div>
         </div>
@@ -204,7 +216,7 @@ if uploaded:
     else:
         st.markdown(f"""
         <div class="result-box result-unknown">
-            <div class="result-label">❓ Unrecognised</div>
+            <div class="result-label">Unrecognised</div>
             <div class="score-mono">{score:.4f}</div>
             <div class="result-sub">Max confidence below threshold ({THRESHOLD})</div>
         </div>
@@ -244,8 +256,7 @@ if uploaded:
 else:
     st.markdown("""
     <div style="text-align:center; padding: 2rem 0; color: #4b5563;">
-        <div style="font-size: 3rem; margin-bottom: 0.5rem;">🏗️</div>
-        <div style="font-size: 0.9rem;">No image uploaded yet. Drop one above to get started.</div>
+        <div style="font-size: 0.9rem;">No image yet. Upload one or take a photo to get started.</div>
     </div>
     """, unsafe_allow_html=True)
 
