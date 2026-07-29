@@ -157,7 +157,7 @@ if uploaded:
     prediction = float(raw[1])   # cracked class probability
 
     # score close to 1 → cracked, close to 0 → not_cracked
-    is_cracked    = prediction >= 0.5
+    is_cracked    = prediction >= 0.7
     confidence    = prediction if is_cracked else 1.0 - prediction
     score_display = f"{prediction:.4f}"
 
