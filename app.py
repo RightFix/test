@@ -167,7 +167,7 @@ html, body, [class*="css"] {
     border-radius: 4px;
     border: 1px solid #2A3F2A;
 }
-[data-testid="stImage"] > div > div {
+[data-testid="caption"] {
     font-family: 'IBM Plex Mono', monospace !important;
     font-size: 0.65rem !important;
     color: #4A6741 !important;
@@ -229,7 +229,7 @@ if uploaded:
     col_img, col_result = st.columns([1, 1], gap="large")
 
     with col_img:
-        st.image(image, caption="input image", use_container_width=True)
+        st.image(image, caption="input image", use_column_width=True)
 
     with col_result:
         with st.spinner("Running inference..."):
