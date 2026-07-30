@@ -1,7 +1,6 @@
 import numpy as np
 import streamlit as st
 import tensorflow as tf
-from PIL import Image
 
 IMG_SIZE = (224, 224)
 MODEL_PATH = "mobilenetv2_transfer.keras"
@@ -9,7 +8,7 @@ CLASS_NAMES = ["orange", "rottenoranges"]
 
 st.set_page_config(
     page_title="Orange Freshness Classifier",
-    page_icon="",
+    page_icon="🍊",
     layout="centered",
 )
 
@@ -19,22 +18,28 @@ def load_model():
     return tf.keras.models.load_model(MODEL_PATH)
 
 
-def preprocess(image):
-
-    img = tf.keras.utils.load_img(image, target_size=IMG_SIZE)
+def preprocess(file_bytes):
+    # Pass the byte buffer directly to Keras
+    img = tf.keras.utils.load_img(file_bytes, target_size=IMG_SIZE)
     img_array = tf.keras.utils.img_to_array(img)
-    return np.expand_dims(img_array, axis=0)
+    # Add batch dimension: shape (1, 224, 224, 3)
+    img_array = np.expand_dims(img_array, axis=0)
+    # MobileNetV2 requires preprocessing scale [-1, 1] if not built into the model
+    # tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
+    return img_array
 
 
-def predict(model, image):
-    probs = model.predict(image, verbose=0)[0][0]
-    st.write(f"Raw probabilities: {probs}")
-    orange_score = float(probs[0])
-    rotten_score = float(probs[1])
-    st.write(f"orange score: {orange_score}")
-    st.write(f"rotten score: {rotten_score}")
-    label = CLASS_NAMES[int(probs)]
-    st.write(f" {label}")
+def predict(model, preprocessed_img):
+    # Raw sigmoid probability of index 1 ("rottenoranges")
+    prob_rotten = float(model.predict(preprocessed_img, verbose=0)[0][0])
+    
+    rotten_score = prob_rotten
+    orange_score = 1.0 - prob_rotten
+
+    # Threshold at 0.5 for binary classification
+    class_idx = 1 if prob_rotten >= 0.5 else 0
+    label = CLASS_NAMES[class_idx]
+
     return label, orange_score, rotten_score
 
 
@@ -54,18 +59,18 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
-    image = uploaded_file.name
-
     col1, col2 = st.columns([1, 1], gap="large")
 
     with col1:
-        st.image(image, caption="Uploaded image", width='stretch')
+        # Pass uploaded_file directly, not uploaded_file.name
+        st.image(uploaded_file, caption="Uploaded image", use_container_width=True)
 
     with col2:
         with st.spinner("Running inference..."):
             try:
                 model = load_model()
-                label, orange_score, rotten_score = predict(model, image)
+                processed_img = preprocess(uploaded_file)
+                label, orange_score, rotten_score = predict(model, processed_img)
             except Exception as e:
                 st.error(f"Model error: {e}")
                 st.stop()
@@ -78,7 +83,7 @@ if uploaded_file is not None:
             st.error("Rotten Orange")
 
         st.metric(
-            label="Freshness score  |  0 = rotten,  1 = fresh orange",
+            label="Freshness score | 0 = rotten, 1 = fresh orange",
             value=f"{orange_score:.4f}",
         )
 
@@ -88,6 +93,6 @@ if uploaded_file is not None:
 
         st.divider()
         st.caption(
-            "Model: MobileNetV2 Transfer Learning  |  "
-            "Accuracy: 96.47%  |  F1: 96.38%"
+            "Model: MobileNetV2 Transfer Learning | "
+            "Accuracy: 96.47% | F1: 96.38%"
         )
