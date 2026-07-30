@@ -64,7 +64,7 @@ if uploaded:
 
 # ── Inference ─────────────────────────────────────────────────────────────────
 if image:
-    st.image(image, width="stretch", caption=caption)
+    st.image(image, width="stretch", caption='upload image')
 
     with st.spinner("Analysing..."):
         tensor = preprocess(image)
