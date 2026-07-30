@@ -4,7 +4,7 @@ import tensorflow as tf
 from PIL import Image
 
 IMG_SIZE = (224, 224)
-MODEL_PATH = "tl_feature_extraction_best.keras"
+MODEL_PATH = "mobilenetv2_transfer.keras"
 CLASS_NAMES = ["orange", "rottenoranges"]
 
 st.set_page_config(
