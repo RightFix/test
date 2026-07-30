@@ -173,18 +173,12 @@ if image:
 
     with st.spinner("Analysing..."):
         tensor = preprocess(image)
-        raw    = model.predict(tensor, verbose=0)[0]
+        prob   = model.predict(tensor, verbose=0)[0][0]
 
-    p_fresh  = float(raw[1])
-    p_rotten = float(raw[0])
-    pred_idx = int(np.argmax(raw))
-
-    if pred_idx == 1:
-        label = "orange"
-        score = p_fresh
-    else:
-        label = "rottenoranges"
-        score = p_rotten
+    p_fresh  = float(prob)
+    p_rotten = 1.0 - float(prob)
+    label    = CLASS_NAMES[int(prob <= 0.5)]
+    score    = p_fresh if label == "orange" else p_rotten
 
     if label == "orange":
         st.markdown(f"""
@@ -212,7 +206,7 @@ if image:
 
     with st.expander("Model details"):
         st.markdown(f"""
-        **Raw softmax:** `[{raw[0]:.6f}, {raw[1]:.6f}]`
+        **Raw softmax output:** `{prob:.6f}`
 
         **Class order:** `{CLASS_NAMES}`
 
