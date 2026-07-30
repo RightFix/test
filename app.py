@@ -79,10 +79,10 @@ if image:
     #     score = max_prob
     if raw >= 0.5 :
         label = "orange"
-        score = raw:.4f
+        score = raw
     else:
         label = "rotten_oranges"
-        score = 1 - raw:.4f
+        score = 1 - raw
 
     if label == "orange":
         st.markdown(f"""
@@ -92,7 +92,7 @@ if image:
             <div class="result-sub">Crack probability (threshold = {THRESHOLD})</div>
         </div>
         """, unsafe_allow_html=True)
-    elif label == "rotten_orange":
+    elif label == "rotten_oranges":
         st.markdown(f"""
         <div class="result-box result-safe">
             <div class="result-label">Rotten Orange</div>
