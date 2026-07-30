@@ -18,38 +18,32 @@ def load_model():
     return tf.keras.models.load_model(MODEL_PATH)
 
 
-def preprocess(file_bytes):
-    # Pass the byte buffer directly to Keras
-    img = tf.keras.utils.load_img(file_bytes, target_size=IMG_SIZE)
+def preprocess(uploaded_file):
+    img = tf.keras.utils.load_img(uploaded_file, target_size=IMG_SIZE)
     img_array = tf.keras.utils.img_to_array(img)
-    # Add batch dimension: shape (1, 224, 224, 3)
-    img_array = np.expand_dims(img_array, axis=0)
-    # MobileNetV2 requires preprocessing scale [-1, 1] if not built into the model
-    # tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
-    return img_array
+    return np.expand_dims(img_array, axis=0)
 
 
 def predict(model, preprocessed_img):
-    # Raw sigmoid probability of index 1 ("rottenoranges")
-    prob_rotten = float(model.predict(preprocessed_img, verbose=0)[0][0])
+    prob = float(model.predict(preprocessed_img, verbose=0)[0][0])
     
-    rotten_score = prob_rotten
-    orange_score = 1.0 - prob_rotten
-
-    # Threshold at 0.5 for binary classification
-    class_idx = 1 if prob_rotten >= 0.5 else 0
+    # Matching your notebook classification logic
+    class_idx = 0 if prob <= 0.5 else 1
     label = CLASS_NAMES[class_idx]
+
+    rotten_score = prob
+    orange_score = 1.0 - prob
 
     return label, orange_score, rotten_score
 
 
-# --- UI ---
+# --- UI Layout ---
 
 st.title("Orange Freshness Classifier")
 st.caption(
     "Upload an image of an orange. "
     "The model returns a freshness score between 0 and 1. "
-    "Close to 0 means rotten, close to 1 means fresh."
+    "Close to 0 means fresh, close to 1 means rotten."
 )
 
 st.divider()
@@ -62,15 +56,14 @@ if uploaded_file is not None:
     col1, col2 = st.columns([1, 1], gap="large")
 
     with col1:
-        # Pass uploaded_file directly, not uploaded_file.name
         st.image(uploaded_file, caption="Uploaded image", use_container_width=True)
 
     with col2:
         with st.spinner("Running inference..."):
             try:
                 model = load_model()
-                processed_img = preprocess(uploaded_file)
-                label, orange_score, rotten_score = predict(model, processed_img)
+                img_array = preprocess(uploaded_file)
+                label, orange_score, rotten_score = predict(model, img_array)
             except Exception as e:
                 st.error(f"Model error: {e}")
                 st.stop()
@@ -83,7 +76,7 @@ if uploaded_file is not None:
             st.error("Rotten Orange")
 
         st.metric(
-            label="Freshness score | 0 = rotten, 1 = fresh orange",
+            label="Freshness score",
             value=f"{orange_score:.4f}",
         )
 
@@ -93,6 +86,6 @@ if uploaded_file is not None:
 
         st.divider()
         st.caption(
-            "Model: MobileNetV2 Transfer Learning | "
-            "Accuracy: 96.47% | F1: 96.38%"
+            "Model: MobileNetV2 Transfer Learning  |  "
+            "Accuracy: 96.47%  |  F1: 96.38%"
         )
