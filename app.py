@@ -7,11 +7,11 @@ import tensorflow as tf
 MODEL_PATH  = "mobilenetv2_transfer.keras"
 IMG_SIZE    = (224, 224)
 THRESHOLD   = 0.6
-CLASS_NAMES = ["orange", "rotten_orange"]   # must match training class order
+CLASS_NAMES = ["orange", "rotten_oranges"]   # must match training class order
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Concrete Crack Detector",
+    page_title="Orange Quality Classifier",
     layout="centered",
 )
 
@@ -194,7 +194,7 @@ if image:
         label = "orange"
         score = p_cracked
     else:
-        label = "rotten_orange"
+        label = "rotten_oranges"
         score = p_not_cracked
 
     if label == "orange":
