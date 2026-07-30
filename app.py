@@ -66,7 +66,7 @@ if image:
     if label == "Healthy":
         st.markdown(f"""
         <div class="result-box result-cracked">
-            <div class="result-label">Orange</div>
+            <div class="result-label">Healthy</div>
             <div class="score-mono">{score:.4f}</div>
             <div class="result-sub">Healthy probability </div>
         </div>
@@ -74,7 +74,7 @@ if image:
     elif label == "Vitiligo":
         st.markdown(f"""
         <div class="result-box result-safe">
-            <div class="result-label">Rotten Orange</div>
+            <div class="result-label">Vitiligo </div>
             <div class="score-mono">{score:.4f}</div>
             <div class="result-sub">Vitiligo probability </div>
         </div>
