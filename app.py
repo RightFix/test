@@ -4,28 +4,26 @@ import tensorflow as tf
 import tempfile
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-MODEL_PATH  = "mobilenetv2_transfer.keras"
+MODEL_PATH  = "mobilenetv3_transfer.keras"
 IMG_SIZE    = (224, 224)
-THRESHOLD   = 0.6
-CLASS_NAMES = ["orange", "rottenoranges"]   # must match training class order
+CLASS_NAMES = ["Healthy", "Vitiligo"]   # must match training class order
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Orange Quality Classifier",
+    page_title="Skin Classifier",
     layout="centered",
 )
 
 # ── Hero ──────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="hero">
-    <h1>Orange Quality Classifier</h1>
-    <p>Upload a concrete surface image or take a photo — the model will tell you whether it is cracked.</p>
+    <h1>Skin Classifier</h1>
+    <p>Upload a picture of the skin so it can be analyzed.</p>
 </div>
 """, unsafe_allow_html=True)
 
 
 image = None
-# caption = None
 
 uploaded = st.file_uploader(
         "Choose an image",
@@ -41,8 +39,6 @@ if uploaded:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
         tmp.write(uploaded.getbuffer())
         image = tmp.name
-        # image = Image.open(uploaded)
-        # caption = uploaded.name
 
 
 # ── Inference ─────────────────────────────────────────────────────────────────
@@ -59,7 +55,7 @@ if image:
    
     label = CLASS_NAMES[int(raw <= 0.5)]
   
-    if label == "orange":
+    if label == "Healthy":
         label = label
         score = raw
     else:
@@ -67,7 +63,7 @@ if image:
         score = 1 - raw
         
     
-    if label == "orange":
+    if label == "Healthy":
         st.markdown(f"""
         <div class="result-box result-cracked">
             <div class="result-label">Orange</div>
@@ -75,22 +71,15 @@ if image:
             <div class="result-sub">Healthy probability </div>
         </div>
         """, unsafe_allow_html=True)
-    elif label == "rottenoranges":
+    elif label == "Vitiligo":
         st.markdown(f"""
         <div class="result-box result-safe">
             <div class="result-label">Rotten Orange</div>
             <div class="score-mono">{score:.4f}</div>
-            <div class="result-sub">Rotten probability </div>
+            <div class="result-sub">Vitiligo probability </div>
         </div>
         """, unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-        <div class="result-box result-unknown">
-            <div class="result-label">Unrecognised</div>
-            <div class="score-mono">{score:.4f}</div>
-            <div class="result-sub">Max confidence below threshold ({THRESHOLD})</div>
-        </div>
-        """, unsafe_allow_html=True)
+    
 
 
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
