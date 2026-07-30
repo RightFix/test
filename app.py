@@ -1,6 +1,7 @@
 import streamlit as st
 import numpy as np
 import tensorflow as tf
+import tempfile
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 MODEL_PATH  = "mobilenetv2_transfer.keras"
@@ -21,13 +22,13 @@ def load_model():
     return tf.keras.models.load_model(MODEL_PATH)
 
 # ── Preprocessing ─────────────────────────────────────────────────────────────
-def preprocess(image: Image.Image) -> np.ndarray:
-    img = image.convert("RGB").resize(IMG_SIZE)
-    #img = tf.keras.utils.load_img(img_path, target_size=image_size)
-    #img_array = tf.keras.utils.img_to_array(img)
+def preprocess(image):
+    # img = image.convert("RGB").resize(IMG_SIZE)
+    img = tf.keras.utils.load_img(image, target_size=IMG_SIZE)
+    img_array = tf.keras.utils.img_to_array(img)
     #img_array = np.expand_dims(img_array, axis=0) 
-    arr = np.array(img, dtype=np.float32)   # NO /255
-    return np.expand_dims(arr, axis=0)
+    # arr = np.array(img, dtype=np.float32)   # NO /255
+    return np.expand_dims(img_array, axis=0)
 
 model = load_model()
 
@@ -43,7 +44,7 @@ st.markdown("""
 tab_upload = st.tabs(["Upload Image"])
 
 image = None
-caption = None
+# caption = None
 
 with tab_upload:
     uploaded = st.file_uploader(
@@ -56,8 +57,12 @@ with tab_upload:
         unsafe_allow_html=True,
     )
     if uploaded:
-        image = Image.open(uploaded)
-        caption = uploaded.name
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+            tmp.write(uploaded.getbuffer())
+            image = tmp.name
+        # image = Image.open(uploaded)
+        # caption = uploaded.name
 
 
 # ── Inference ─────────────────────────────────────────────────────────────────
