@@ -48,7 +48,7 @@ if uploaded_file:
     col1, col2 = st.columns([1, 1], gap="large")
 
     with col1:
-        st.image(image, caption="Uploaded image", use_container_width=True)
+        st.image(image, caption="Uploaded image", width="stretch")
 
     with col2:
         with st.spinner("Running inference..."):
