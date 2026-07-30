@@ -95,6 +95,6 @@ if image:
 
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
 st.markdown(
-    '<div class="footer">Custom CNN · Trained on Concrete Crack Dataset · 96.47% accuracy</div>',
+    '<div class="footer">Custom CNN · Trained on Fruit Dataset · 96.47% accuracy</div>',
     unsafe_allow_html=True,
 )
