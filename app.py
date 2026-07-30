@@ -74,7 +74,7 @@ if image:
     # p_not_cracked = float(raw[1])
     # max_prob = max(p_cracked, p_not_cracked)
     # pred_idx = int(np.argmax(raw))
-    label = class_names[int(raw <= 0.5)]
+    label = CLASS_NAMES[int(raw <= 0.5)]
 
     # if max_prob <:
     #     label = "unrecognised"
