@@ -295,7 +295,7 @@ if uploaded:
 
 # Image preview inside the same panel
 if image:
-    st.image(image, use_container_width=True)
+    st.image(image, width='stretch)
 
 st.markdown('</div>', unsafe_allow_html=True)  # close .panel
 
