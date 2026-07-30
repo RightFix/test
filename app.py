@@ -40,27 +40,24 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ── Input — upload or camera ──────────────────────────────────────────────────
-tab_upload = st.tabs(["Upload Image"])
 
 image = None
 # caption = None
 
-with tab_upload:
-    uploaded = st.file_uploader(
+uploaded = st.file_uploader(
         "Choose an image",
         type=["jpg", "jpeg", "png", "bmp", "webp"],
         label_visibility="collapsed",
     )
-    st.markdown(
+st.markdown(
         '<p class="upload-hint">Supported formats: JPG · PNG · BMP · WEBP</p>',
         unsafe_allow_html=True,
     )
-    if uploaded:
+if uploaded:
         # Create a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-            tmp.write(uploaded.getbuffer())
-            image = tmp.name
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+        tmp.write(uploaded.getbuffer())
+        image = tmp.name
         # image = Image.open(uploaded)
         # caption = uploaded.name
 
