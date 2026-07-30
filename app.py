@@ -32,7 +32,9 @@ def predict(model, image: Image.Image):
     st.write(f"Raw probabilities: {probs}")
     orange_score = float(probs[0])
     rotten_score = float(probs[1])
-    label = CLASS_NAMES[int(np.argmax(probs))]
+    st.write(f"orange score: {orange_score}")
+    st.write(f"rotten score: {rotten_score}")
+    label = CLASS_NAMES[int(probs)]
     return label, orange_score, rotten_score
 
 
