@@ -22,6 +22,7 @@ def load_model():
 def preprocess(image: Image.Image) -> np.ndarray:
     image = image.convert("RGB").resize(IMG_SIZE)
     arr = tf.keras.utils.img_to_array(image)
+    arr = tf.keras.applications.mobilenet_v2.preprocess_input(arr)
     return np.expand_dims(arr, axis=0)
 
 
