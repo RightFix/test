@@ -9,9 +9,43 @@ CLASS_NAMES = ["orange", "rottenoranges"]
 
 st.set_page_config(
     page_title="Orange Freshness Classifier",
-    page_icon="",
+    page_icon="🍊",
     layout="centered",
 )
+
+st.markdown("""
+    <style>
+        .result-box {
+            border-radius: 12px;
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            text-align: center;
+        }
+        .fresh {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .rotten {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .prob-label {
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 2px;
+        }
+        .footer-note {
+            font-size: 0.75rem;
+            color: #999;
+            text-align: center;
+            margin-top: 1rem;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 
 @st.cache_resource
@@ -22,28 +56,23 @@ def load_model():
 def preprocess(image: Image.Image) -> np.ndarray:
     image = image.convert("RGB").resize(IMG_SIZE)
     arr = tf.keras.utils.img_to_array(image)
-    arr = tf.keras.applications.mobilenet_v2.preprocess_input(arr)
     return np.expand_dims(arr, axis=0)
 
 
 def predict(model, image: Image.Image):
     x = preprocess(image)
-    probs = model.predict(x, verbose=0)[0]
-    orange_score = float(probs[0])
-    rotten_score = float(probs[1])
-    label = CLASS_NAMES[int(np.argmax(probs))]
-    return label, orange_score, rotten_score
+    probs = model.predict(x, verbose=0)[0]  # softmax output, sums to 1
+    predicted_idx = int(np.argmax(probs))
+    label = CLASS_NAMES[predicted_idx]
+    confidence = float(probs[predicted_idx])
+    all_probs = {CLASS_NAMES[i]: float(probs[i]) for i in range(len(CLASS_NAMES))}
+    return label, confidence, all_probs
 
 
 # --- UI ---
 
-st.title("Orange Freshness Classifier")
-st.caption(
-    "Upload an image of an orange. "
-    "The model returns a freshness score between 0 and 1. "
-    "Close to 0 means rotten, close to 1 means fresh."
-)
-
+st.title("🍊 Orange Freshness Classifier")
+st.caption("Upload a photo of an orange and the model will classify it as fresh or rotten.")
 st.divider()
 
 uploaded_file = st.file_uploader(
@@ -62,29 +91,31 @@ if uploaded_file is not None:
         with st.spinner("Running inference..."):
             try:
                 model = load_model()
-                label, orange_score, rotten_score = predict(model, image)
+                label, confidence, all_probs = predict(model, image)
             except Exception as e:
                 st.error(f"Model error: {e}")
                 st.stop()
 
         st.subheader("Result")
 
-        if label == "orange":
-            st.success("Fresh Orange")
+        is_fresh = label == "orange"
+
+        if is_fresh:
+            st.markdown('<div class="result-box fresh">✅ Fresh Orange</div>', unsafe_allow_html=True)
         else:
-            st.error("Rotten Orange")
+            st.markdown('<div class="result-box rotten">❌ Rotten Orange</div>', unsafe_allow_html=True)
 
         st.metric(
-            label="Freshness score  |  0 = rotten,  1 = fresh orange",
-            value=f"{orange_score:.4f}",
+            label="Confidence",
+            value=f"{confidence:.2%}",
         )
 
         st.caption("Class probabilities")
-        st.progress(orange_score, text=f"Fresh orange: {orange_score:.2%}")
-        st.progress(rotten_score, text=f"Rotten orange: {rotten_score:.2%}")
+        st.progress(all_probs["orange"], text=f"Fresh orange: {all_probs['orange']:.2%}")
+        st.progress(all_probs["rottenoranges"], text=f"Rotten orange: {all_probs['rottenoranges']:.2%}")
 
-        st.divider()
-        st.caption(
-            "Model: MobileNetV2 Transfer Learning  |  "
-            "Accuracy: 96.47%  |  F1: 96.38%"
+        st.markdown(
+            '<div class="footer-note">Model: MobileNetV2 Transfer Learning &nbsp;|&nbsp; '
+            'Accuracy: 96.47% &nbsp;|&nbsp; F1: 96.38%</div>',
+            unsafe_allow_html=True,
         )
