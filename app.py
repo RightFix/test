@@ -12,13 +12,6 @@ st.set_page_config(
     layout="centered",
 )
 
-st.markdown("""
-<style>
-[data-testid="stMetricValue"] { font-size: 2rem; }
-.footer-caption { font-size: 0.75rem; color: #888; text-align: center; margin-top: 0.5rem; }
-</style>
-""", unsafe_allow_html=True)
-
 
 @st.cache_resource
 def load_model():
@@ -29,6 +22,15 @@ def preprocess(image: Image.Image) -> np.ndarray:
     img = image.convert("RGB").resize(IMG_SIZE)
     arr = tf.keras.utils.img_to_array(img)
     return np.expand_dims(arr, axis=0)
+
+
+def predict(model, image: Image.Image):
+    tensor = preprocess(image)
+    probs = model.predict(tensor, verbose=0)[0]
+    predicted_idx = int(np.argmax(probs))
+    label = CLASS_NAMES[predicted_idx]
+    confidence = float(probs[predicted_idx])
+    return label, float(probs[0]), float(probs[1])
 
 
 # --- UI ---
@@ -54,35 +56,24 @@ if uploaded_file:
         with st.spinner("Running inference..."):
             try:
                 model = load_model()
-                tensor = preprocess(image)
-                raw = model.predict(tensor, verbose=0)   # shape (1, 1) or (1, 2)
-
-                probs       = raw[0]
-                fresh_prob  = float(probs[CLASS_NAMES.index("orange")])
-                rotten_prob = float(probs[CLASS_NAMES.index("rottenoranges")])
-
-                predicted_class = CLASS_NAMES[int(np.argmax(raw[0]))]
-                confidence = fresh_prob if predicted_class == "orange" else rotten_prob
-
-                # Result
-                if predicted_class == "orange":
-                    st.success("### Fresh Orange")
-                else:
-                    st.error("### Rotten Orange")
-
-                st.metric("Confidence", f"{confidence * 100:.1f}%")
-
-                st.write("**Class probabilities**")
-                st.progress(fresh_prob,  text=f"Fresh orange  — {fresh_prob * 100:.1f}%")
-                st.progress(rotten_prob, text=f"Rotten orange — {rotten_prob * 100:.1f}%")
-
-                st.divider()
-                st.caption(
-                    f"Raw model output: `{raw[0].tolist()}`"
-                )
-
+                label, fresh_prob, rotten_prob = predict(model, image)
             except Exception as e:
                 st.error(f"Inference failed: {e}")
+                st.stop()
+
+        if label == "orange":
+            st.success("### Fresh Orange")
+        else:
+            st.error("### Rotten Orange")
+
+        st.metric("Confidence", f"{max(fresh_prob, rotten_prob) * 100:.1f}%")
+
+        st.write("**Class probabilities**")
+        st.progress(fresh_prob,  text=f"Fresh orange  — {fresh_prob * 100:.1f}%")
+        st.progress(rotten_prob, text=f"Rotten orange — {rotten_prob * 100:.1f}%")
+
+        st.divider()
+        st.caption(f"Raw output: `[{fresh_prob:.4f}, {rotten_prob:.4f}]`")
 
 else:
     st.info("Upload an orange image above to get a prediction.")
@@ -90,14 +81,13 @@ else:
 with st.sidebar:
     st.header("About")
     st.write(
-        "This app classifies orange images into two categories:\n\n"
-        "- **Fresh Orange** — orange is in good condition\n"
-        "- **Rotten Orange** — orange shows signs of decay\n\n"
-        "**Model:** `tl_feature_extraction_best.keras`  \n"
+        "Classifies orange images into:\n\n"
+        "- **Fresh Orange**\n"
+        "- **Rotten Orange**\n\n"
+        "**Model:** MobileNetV2 Transfer Learning  \n"
+        "**Accuracy:** 96.47%  |  **F1:** 96.38%  \n"
         "**Input size:** 224 x 224 px  \n"
-        "**Framework:** TensorFlow / Keras  \n"
-        "**Accuracy:** 96.47%  |  **F1:** 96.38%"
+        "**Framework:** TensorFlow / Keras"
     )
     st.divider()
-    st.write("Place `tl_feature_extraction_best.keras` in the same directory as `app.py`, then run:")
     st.code("streamlit run app.py", language="bash")
