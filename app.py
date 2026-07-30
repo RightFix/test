@@ -175,11 +175,11 @@ if image:
         tensor = preprocess(image)
         raw    = model.predict(tensor, verbose=0)[0]
 
-    p_fresh  = float(raw[0])
-    p_rotten = float(raw[1])
+    p_fresh  = float(raw[1])
+    p_rotten = float(raw[0])
     pred_idx = int(np.argmax(raw))
 
-    if pred_idx == 0:
+    if pred_idx == 1:
         label = "orange"
         score = p_fresh
     else:
