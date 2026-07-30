@@ -56,29 +56,23 @@ if image:
         img_array = np.expand_dims(img_array, axis=0) 
         raw = model.predict(img_array, verbose=0)[0][0]
 
-    # p_cracked = float(raw[0])
-    # p_not_cracked = float(raw[1])
-    # max_prob = max(p_cracked, p_not_cracked)
-    # pred_idx = int(np.argmax(raw))
+   
     label = CLASS_NAMES[int(raw <= 0.5)]
-    st.write(label)
-    # if max_prob <:
-    #     label = "unrecognised"
-    #     score = max_prob
+  
     if label == "orange":
         label = label
         score = raw
     else:
         label = label
         score = 1 - raw
-    st.write(raw)
-    st.write(image)
+        
+    
     if label == "orange":
         st.markdown(f"""
         <div class="result-box result-cracked">
             <div class="result-label">Orange</div>
             <div class="score-mono">{score:.4f}</div>
-            <div class="result-sub">Healthy probability (threshold = {THRESHOLD})</div>
+            <div class="result-sub">Healthy probability </div>
         </div>
         """, unsafe_allow_html=True)
     elif label == "rottenoranges":
@@ -86,7 +80,7 @@ if image:
         <div class="result-box result-safe">
             <div class="result-label">Rotten Orange</div>
             <div class="score-mono">{score:.4f}</div>
-            <div class="result-sub">Rotten probability (threshold = {THRESHOLD})</div>
+            <div class="result-sub">Rotten probability </div>
         </div>
         """, unsafe_allow_html=True)
     else:
