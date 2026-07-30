@@ -79,11 +79,11 @@ if image:
     # if max_prob <:
     #     label = "unrecognised"
     #     score = max_prob
-    if raw >= 0.5 :
-        label = "orange"
+    if label == "orange":
+        label = label
         score = raw
     else:
-        label = "rotten_oranges"
+        label = label
         score = 1 - raw
 
     if label == "orange":
