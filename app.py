@@ -50,7 +50,7 @@ if image:
     st.image(image, width="stretch", caption='upload image')
 
     with st.spinner("Analysing..."):
-        model =  tf.keras.models.load_model('mobilenetv2_transfer.keras')
+        model =  tf.keras.models.load_model(MODEL_PATH)
         img = tf.keras.utils.load_img(image, target_size=IMG_SIZE)
         img_array = tf.keras.utils.img_to_array(img)
         img_array = np.expand_dims(img_array, axis=0) 
