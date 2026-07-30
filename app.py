@@ -85,13 +85,14 @@ if image:
     else:
         label = label
         score = 1 - raw
-
+    st.write(raw)
+    st.write(image)
     if label == "orange":
         st.markdown(f"""
         <div class="result-box result-cracked">
             <div class="result-label">Orange</div>
             <div class="score-mono">{score:.4f}</div>
-            <div class="result-sub">Crack probability (threshold = {THRESHOLD})</div>
+            <div class="result-sub">Healthy probability (threshold = {THRESHOLD})</div>
         </div>
         """, unsafe_allow_html=True)
     elif label == "rotten_oranges":
@@ -99,7 +100,7 @@ if image:
         <div class="result-box result-safe">
             <div class="result-label">Rotten Orange</div>
             <div class="score-mono">{score:.4f}</div>
-            <div class="result-sub">Healthy probability (threshold = {THRESHOLD})</div>
+            <div class="result-sub">Rotten probability (threshold = {THRESHOLD})</div>
         </div>
         """, unsafe_allow_html=True)
     else:
