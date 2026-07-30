@@ -57,16 +57,9 @@ if uploaded_file:
                 tensor = preprocess(image)
                 raw = model.predict(tensor, verbose=0)   # shape (1, 1) or (1, 2)
 
-                if raw.shape[-1] == 1:
-                    # Sigmoid output
-                    score         = float(raw[0][0])
-                    fresh_prob    = 1.0 - score
-                    rotten_prob   = score
-                else:
-                    # Softmax output — use raw probabilities directly, do NOT re-apply softmax
-                    probs       = raw[0]
-                    fresh_prob  = float(probs[CLASS_NAMES.index("orange")])
-                    rotten_prob = float(probs[CLASS_NAMES.index("rottenoranges")])
+                probs       = raw[0]
+                fresh_prob  = float(probs[CLASS_NAMES.index("orange")])
+                rotten_prob = float(probs[CLASS_NAMES.index("rottenoranges")])
 
                 predicted_class = CLASS_NAMES[int(np.argmax(raw[0]))]
                 confidence = fresh_prob if predicted_class == "orange" else rotten_prob
