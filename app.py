@@ -191,24 +191,24 @@ if image:
         label = "unrecognised"
         score = max_prob
     elif pred_idx == 0:
-        label = "cracked"
+        label = "orange"
         score = p_cracked
     else:
-        label = "not_cracked"
+        label = "rotten_orange"
         score = p_not_cracked
 
-    if label == "cracked":
+    if label == "orange":
         st.markdown(f"""
         <div class="result-box result-cracked">
-            <div class="result-label">Cracked</div>
+            <div class="result-label">Orange</div>
             <div class="score-mono">{score:.4f}</div>
             <div class="result-sub">Crack probability (threshold = {THRESHOLD})</div>
         </div>
         """, unsafe_allow_html=True)
-    elif label == "not_cracked":
+    elif label == "rotten_orange":
         st.markdown(f"""
         <div class="result-box result-safe">
-            <div class="result-label">Not Cracked</div>
+            <div class="result-label">Rotten Orange</div>
             <div class="score-mono">{score:.4f}</div>
             <div class="result-sub">Healthy probability (threshold = {THRESHOLD})</div>
         </div>
