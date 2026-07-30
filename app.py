@@ -54,7 +54,7 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
-    image = uploaded_file
+    image = uploaded_file.name
 
     col1, col2 = st.columns([1, 1], gap="large")
 
