@@ -19,22 +19,22 @@ def load_model():
     return tf.keras.models.load_model(MODEL_PATH)
 
 
-def preprocess(image: Image.Image):
+def preprocess(image):
 
     img = tf.keras.utils.load_img(image, target_size=IMG_SIZE)
     img_array = tf.keras.utils.img_to_array(img)
     return np.expand_dims(img_array, axis=0)
 
 
-def predict(model, image: Image.Image):
-    x = preprocess(image)
-    probs = model.predict(x, verbose=0)[0][0]
+def predict(model, image):
+    probs = model.predict(image, verbose=0)[0][0]
     st.write(f"Raw probabilities: {probs}")
     orange_score = float(probs[0])
     rotten_score = float(probs[1])
     st.write(f"orange score: {orange_score}")
     st.write(f"rotten score: {rotten_score}")
     label = CLASS_NAMES[int(probs)]
+    st.write(f" {label}")
     return label, orange_score, rotten_score
 
 
