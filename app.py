@@ -7,30 +7,13 @@ import tempfile
 MODEL_PATH  = "mobilenetv2_transfer.keras"
 IMG_SIZE    = (224, 224)
 THRESHOLD   = 0.6
-CLASS_NAMES = ["orange", "rotten_oranges"]   # must match training class order
+CLASS_NAMES = ["orange", "rottenoranges"]   # must match training class order
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Orange Quality Classifier",
     layout="centered",
 )
-
-
-# ── Model loading ─────────────────────────────────────────────────────────────
-@st.cache_resource
-def load_model():
-    return tf.keras.models.load_model(MODEL_PATH)
-
-# ── Preprocessing ─────────────────────────────────────────────────────────────
-def preprocess(image):
-    # img = image.convert("RGB").resize(IMG_SIZE)
-    img = tf.keras.utils.load_img(image, target_size=IMG_SIZE)
-    img_array = tf.keras.utils.img_to_array(img)
-    #img_array = np.expand_dims(img_array, axis=0) 
-    # arr = np.array(img, dtype=np.float32)   # NO /255
-    return np.expand_dims(img_array, axis=0)
-
-model = load_model()
 
 # ── Hero ──────────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -67,8 +50,11 @@ if image:
     st.image(image, width="stretch", caption='upload image')
 
     with st.spinner("Analysing..."):
-        tensor = preprocess(image)
-        raw = model.predict(tensor, verbose=0)[0][0]
+        model =  tf.keras.models.load_model('mobilenetv2_transfer.keras')
+        img = tf.keras.utils.load_img(image, target_size=IMG_SIZE)
+        img_array = tf.keras.utils.img_to_array(img)
+        img_array = np.expand_dims(img_array, axis=0) 
+        raw = model.predict(img_array, verbose=0)[0][0]
 
     # p_cracked = float(raw[0])
     # p_not_cracked = float(raw[1])
@@ -95,7 +81,7 @@ if image:
             <div class="result-sub">Healthy probability (threshold = {THRESHOLD})</div>
         </div>
         """, unsafe_allow_html=True)
-    elif label == "rotten_oranges":
+    elif label == "rottenoranges":
         st.markdown(f"""
         <div class="result-box result-safe">
             <div class="result-label">Rotten Orange</div>
