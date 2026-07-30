@@ -75,7 +75,7 @@ if image:
     # max_prob = max(p_cracked, p_not_cracked)
     # pred_idx = int(np.argmax(raw))
     label = CLASS_NAMES[int(raw <= 0.5)]
-
+    st.write(label)
     # if max_prob <:
     #     label = "unrecognised"
     #     score = max_prob
