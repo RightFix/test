@@ -247,7 +247,7 @@ if uploaded:
 
 # ── Inference ──────────────────────────────────────────────────────────────────
 if image_path:
-    st.image(image_path, use_container_width=True, caption="")
+    st.image(image_path, container="stretch", caption="")
 
     with st.spinner("Running diagnostic…"):
         model = tf.keras.models.load_model(MODEL_PATH)
