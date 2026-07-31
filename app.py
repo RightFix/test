@@ -305,19 +305,7 @@ if image_path:
     gauge_color = "#15803D" if label == "Clean" else "#B45309"
     track_color = "#E2E8F0"
 
-    gauge_svg = f"""
-    <svg width="110" height="110" viewBox="0 0 110 110">
-      <circle cx="55" cy="55" r="{radius}" fill="none" stroke="{track_color}" stroke-width="8"/>
-      <circle cx="55" cy="55" r="{radius}" fill="none" stroke="{gauge_color}" stroke-width="8"
-              stroke-dasharray="{stroke_dash:.1f} {circumference:.1f}"
-              stroke-dashoffset="{circumference * 0.25:.1f}"
-              stroke-linecap="round"/>
-      <text x="55" y="50" text-anchor="middle" font-family="JetBrains Mono, monospace"
-            font-size="14" font-weight="600" fill="{gauge_color}">{bar_pct}%</text>
-      <text x="55" y="65" text-anchor="middle" font-family="JetBrains Mono, monospace"
-            font-size="7" fill="#94A3B8" letter-spacing="1">CONF</text>
-    </svg>
-    """
+    gauge_svg = st.markdown(f"<svg width='110' height='110' viewBox='0 0 110 110'><circle cx='55' cy='55' r='{radius}' fill='none' stroke='{track_color}' stroke-width='8'/><circle cx='55' cy='55' r='{radius}' fill='none' stroke='{gauge_color}' stroke-width='8' stroke-dasharray='{stroke_dash:.1f} {circumference:.1f}' stroke-dashoffset='{circumference * 0.25:.1f}' stroke-linecap='round'/><text x='55' y='50' text-anchor='middle' font-family='monospace' font-size='14' font-weight='600' fill='{gauge_color}'>{bar_pct}%</text><text x='55' y='65' text-anchor='middle' font-family='JetBrains Mono, monospace' font-size='7' fill='#94A3B8' letter-spacing='1'>CONF</text></svg>", unsafe_allow_html=True)
 
     import datetime
     ts = datetime.datetime.now().strftime("%H:%M:%S")
