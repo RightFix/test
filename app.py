@@ -3,374 +3,308 @@ import numpy as np
 import tensorflow as tf
 import tempfile
 
-# ── Constants ─────────────────────────────────────────────────────────────────
-MODEL_PATH  = "mobilenetv3_transfer.keras"
+# ── Constants ──────────────────────────────────────────────────────────────────
+MODEL_PATH  = "tl_feature_extraction_best.keras"
 IMG_SIZE    = (224, 224)
-CLASS_NAMES = ["Healthy", "Vitiligo"]   # must match training class order
+CLASS_NAMES = ["Clean", "Dusty"]   # sigmoid: prob >= 0.5 → Dusty
 
-# ── Page config ───────────────────────────────────────────────────────────────
+# ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="DermaScan · Vitiligo Detector",
-    page_icon="🔬",
+    page_title="Solar Panel Diagnostic",
+    page_icon="☀️",
     layout="centered",
 )
 
-# ── Styles ────────────────────────────────────────────────────────────────────
+# ── Styles ─────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@300;400;500;600&display=swap');
 
-html, body, [class*="css"] {
+/* ── Reset & base ── */
+html, body, [data-testid="stAppViewContainer"] {
+    background-color: #0F1117;
+    color: #E8EAF0;
     font-family: 'Inter', sans-serif;
-    background-color: #0d0f14;
-    color: #e2e6f0;
 }
-.stApp { background: #0d0f14; }
-#MainMenu, footer, header { visibility: hidden; }
-.block-container {
-    padding: 2.5rem 1.5rem 4rem;
-    max-width: 680px;
+[data-testid="stAppViewContainer"] {
+    background: radial-gradient(ellipse at 50% 0%, #1a1f2e 0%, #0F1117 60%);
 }
+[data-testid="stHeader"] { background: transparent; }
 
-/* ── Top bar ── */
-.topbar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 2.5rem;
-    padding-bottom: 1.2rem;
-    border-bottom: 1px solid #1e2230;
-}
-.topbar-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    background: #4f8ef7;
-    box-shadow: 0 0 8px #4f8ef755;
-}
-.topbar-title {
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: #6b7a99;
-}
-.topbar-badge {
-    margin-left: auto;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.68rem;
-    color: #4f8ef7;
-    background: #4f8ef714;
-    border: 1px solid #4f8ef730;
-    border-radius: 4px;
-    padding: 2px 8px;
-}
+/* ── Hide default elements ── */
+#MainMenu, footer, [data-testid="stToolbar"] { visibility: hidden; }
 
 /* ── Hero ── */
-.hero-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.72rem;
-    color: #4f8ef7;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-bottom: 0.6rem;
-}
-.hero-title {
-    font-size: 2.4rem;
-    font-weight: 700;
-    line-height: 1.15;
-    color: #f0f4ff;
-    margin-bottom: 0.75rem;
-    letter-spacing: -0.02em;
-}
-.hero-title span { color: #4f8ef7; }
-.hero-sub {
-    font-size: 0.95rem;
-    color: #6b7a99;
-    line-height: 1.6;
-    margin-bottom: 2rem;
-}
-
-/* ── Combined panel ── */
-.panel {
-    background: #111420;
-    border: 1.5px solid #2a2f45;
-    border-radius: 14px;
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-}
-
-/* Upload state — shown before image */
-.panel-upload-area {
-    padding: 2.5rem 1.5rem 1rem;
-    border-bottom: 1px solid #1e2230;
-}
-.panel-hint {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: #3a4260;
-    letter-spacing: 0.08em;
+.hero {
     text-align: center;
-    padding: 0.6rem 1.5rem 1rem;
+    padding: 3rem 1rem 2rem;
+    border-bottom: 1px solid #1e2333;
+    margin-bottom: 2.5rem;
 }
-
-/* Image preview sits inside the panel */
-.panel-img-wrap {
-    position: relative;
-    width: 100%;
-    background: #0d0f14;
-}
-.panel-img-wrap img {
-    width: 100%;
-    display: block;
-    max-height: 360px;
-    object-fit: cover;
-}
-
-/* Scan overlay on image */
-.scan-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #0d0f14cc;
-    backdrop-filter: blur(2px);
-}
-.scan-text {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.78rem;
-    color: #4f8ef7;
-    letter-spacing: 0.12em;
-    animation: pulse 1.4s ease-in-out infinite;
-}
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.25; }
-}
-
-/* Result strip inside the panel, below the image */
-.panel-result {
-    padding: 1.2rem 1.5rem;
-    border-top: 1px solid;
-    display: flex;
-    align-items: center;
-    gap: 1.2rem;
-}
-.panel-result-healthy  { border-color: #1a4028; background: #0a1a0f; }
-.panel-result-vitiligo { border-color: #3d1a1a; background: #170d0d; }
-
-.result-icon {
-    font-size: 1.6rem;
-    flex-shrink: 0;
-}
-.result-text { flex: 1; }
-.result-eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.62rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    margin-bottom: 0.2rem;
-}
-.eyebrow-healthy  { color: #22c55e; }
-.eyebrow-vitiligo { color: #ef4444; }
-
-.result-diagnosis {
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    margin-bottom: 0.55rem;
-}
-.diag-healthy  { color: #4ade80; }
-.diag-vitiligo { color: #f87171; }
-
-.meter-wrap {
-    background: #ffffff0f;
-    border-radius: 99px;
-    height: 5px;
-    overflow: hidden;
-    margin-bottom: 0.35rem;
-}
-.meter-fill {
-    height: 100%;
-    border-radius: 99px;
-}
-.fill-healthy  { background: linear-gradient(90deg, #22c55e, #4ade80); }
-.fill-vitiligo { background: linear-gradient(90deg, #dc2626, #ef4444); }
-
-.score-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-}
-.score-val {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1rem;
-    font-weight: 600;
-}
-.score-healthy  { color: #4ade80; }
-.score-vitiligo { color: #f87171; }
-.score-sub {
+.hero-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
     font-size: 0.7rem;
-    color: #6b7a99;
+    letter-spacing: 0.2em;
+    color: #F5A623;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
 }
-
-/* ── Disclaimer ── */
-.disclaimer {
-    background: #111420;
-    border: 1px solid #1e2230;
-    border-left: 3px solid #f59e0b;
-    border-radius: 8px;
-    padding: 0.85rem 1.1rem;
-    margin-top: 0.4rem;
-    font-size: 0.76rem;
-    color: #6b7a99;
+.hero h1 {
+    font-size: 2.4rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: #FFFFFF;
+    margin: 0 0 0.75rem;
+    line-height: 1.15;
+}
+.hero p {
+    font-size: 0.95rem;
+    color: #6B7280;
+    font-weight: 300;
+    max-width: 380px;
+    margin: 0 auto;
     line-height: 1.6;
 }
-.disclaimer strong { color: #f59e0b; }
 
-/* ── Footer ── */
-.footer-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 2.5rem;
-    padding-top: 1.2rem;
-    border-top: 1px solid #1e2230;
+/* ── Upload zone ── */
+[data-testid="stFileUploader"] {
+    background: #13161f;
+    border: 1px dashed #2a2f42;
+    border-radius: 10px;
+    padding: 0.5rem;
+    transition: border-color 0.2s;
 }
-.footer-left {
-    font-family: 'JetBrains Mono', monospace;
+[data-testid="stFileUploader"]:hover {
+    border-color: #F5A623;
+}
+[data-testid="stFileUploaderDropzone"] {
+    background: transparent !important;
+}
+.upload-hint {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: #3a3f52;
+    text-align: center;
+    letter-spacing: 0.08em;
+    margin-top: 0.5rem;
+}
+
+/* ── Preview image ── */
+[data-testid="stImage"] img {
+    border-radius: 8px;
+    border: 1px solid #1e2333;
+}
+
+/* ── Scanning animation ── */
+.scan-wrapper {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #2a2f42;
+}
+.scan-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, #F5A623 50%, transparent 100%);
+    animation: scanDown 1.4s ease-in-out infinite;
+    box-shadow: 0 0 12px #F5A623aa;
+}
+@keyframes scanDown {
+    0%   { top: 0%; }
+    100% { top: 100%; }
+}
+
+/* ── Result cards ── */
+.result-card {
+    border-radius: 10px;
+    padding: 2rem 2rem 1.75rem;
+    margin-top: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+.result-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+}
+.result-clean {
+    background: #0d1f14;
+    border: 1px solid #1a3d25;
+}
+.result-clean::before { background: linear-gradient(90deg, #22c55e, #16a34a); }
+
+.result-dusty {
+    background: #1f160a;
+    border: 1px solid #3d2a10;
+}
+.result-dusty::before { background: linear-gradient(90deg, #F5A623, #d97706); }
+
+.result-status {
+    font-family: 'IBM Plex Mono', monospace;
     font-size: 0.65rem;
-    color: #3a4260;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
+    margin-bottom: 0.5rem;
 }
-.footer-right {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: #4f8ef7;
+.result-clean .result-status { color: #22c55e; }
+.result-dusty .result-status { color: #F5A623; }
+
+.result-label {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #FFFFFF;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 1.25rem;
 }
 
-/* strip default streamlit file uploader border */
-[data-testid="stFileUploader"] { background: transparent !important; border: none !important; }
-[data-testid="stFileUploader"] section { background: transparent !important; border: none !important; padding: 0 !important; }
-[data-testid="stFileUploaderDropzone"] { background: transparent !important; border: none !important; }
+.metrics-row {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+.metric-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.metric-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #FFFFFF;
+}
+.metric-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #4B5563;
+}
+
+.confidence-bar-track {
+    height: 4px;
+    background: #1e2333;
+    border-radius: 2px;
+    margin-top: 1.25rem;
+    overflow: hidden;
+}
+.confidence-bar-fill-clean {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+.confidence-bar-fill-dusty {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #F5A623, #d97706);
+}
+
+/* ── Divider & footer ── */
+.divider {
+    border: none;
+    border-top: 1px solid #1e2333;
+    margin: 3rem 0 1.5rem;
+}
+.footer {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: #2e3448;
+    text-align: center;
+    padding-bottom: 2rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# ── Top bar ───────────────────────────────────────────────────────────────────
+# ── Hero ───────────────────────────────────────────────────────────────────────
 st.markdown("""
-<div class="topbar">
-    <div class="topbar-dot"></div>
-    <div class="topbar-title">DermaScan</div>
-    <div class="topbar-badge">MobileNetV3 · 96.9% acc</div>
+<div class="hero">
+    <div class="hero-eyebrow">☀ Solar Panel Diagnostic</div>
+    <h1>Panel Surface<br>Analysis</h1>
+    <p>Upload a panel image to detect dust accumulation and assess surface condition.</p>
 </div>
 """, unsafe_allow_html=True)
 
-# ── Hero ──────────────────────────────────────────────────────────────────────
-st.markdown("""
-<div class="hero-label">Skin Analysis Tool</div>
-<h1 class="hero-title">Detect <span>Vitiligo</span><br>from skin images</h1>
-<p class="hero-sub">Upload a clear photo of the skin area. The model will classify it as healthy or showing signs of vitiligo.</p>
-""", unsafe_allow_html=True)
-
-# ── Combined panel ────────────────────────────────────────────────────────────
-image = None
-
-st.markdown('<div class="panel">', unsafe_allow_html=True)
-
-# Upload widget always lives inside the panel
-st.markdown('<div class="panel-upload-area">', unsafe_allow_html=True)
+# ── Upload ─────────────────────────────────────────────────────────────────────
 uploaded = st.file_uploader(
-    "Upload skin image",
+    "Upload panel image",
     type=["jpg", "jpeg", "png", "bmp", "webp"],
     label_visibility="collapsed",
 )
-st.markdown('</div>', unsafe_allow_html=True)
-st.markdown('<div class="panel-hint">JPG · PNG · BMP · WEBP</div>', unsafe_allow_html=True)
+st.markdown(
+    '<p class="upload-hint">JPG · PNG · BMP · WEBP</p>',
+    unsafe_allow_html=True,
+)
 
+image_path = None
 if uploaded:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
         tmp.write(uploaded.getbuffer())
-        image = tmp.name
+        image_path = tmp.name
 
-# Image preview inside the same panel
-if image:
-    st.image(image, width='stretch')
+# ── Inference ──────────────────────────────────────────────────────────────────
+if image_path:
+    st.image(image_path, use_container_width=True, caption="")
 
-st.markdown('</div>', unsafe_allow_html=True)  # close .panel
-
-# ── Inference ─────────────────────────────────────────────────────────────────
-if image:
-    with st.spinner(""):
-        st.markdown('<p class="scan-text" style="text-align:center;margin-bottom:1rem;">SCANNING IMAGE...</p>', unsafe_allow_html=True)
+    with st.spinner("Running diagnostic…"):
         model = tf.keras.models.load_model(MODEL_PATH)
-        img = tf.keras.utils.load_img(image, target_size=IMG_SIZE)
+        img = tf.keras.utils.load_img(image_path, target_size=IMG_SIZE)
         img_array = tf.keras.utils.img_to_array(img)
         img_array = np.expand_dims(img_array, axis=0)
-        raw = model.predict(img_array, verbose=0)[0][0]
+        prob = model.predict(img_array, verbose=0)[0][0]   # scalar sigmoid output
 
-    # ── Prediction logic (unchanged) ──────────────────────────────────────────
-    label = CLASS_NAMES[int(raw <= 0.5)]
+    # sigmoid: prob = P(Dusty); threshold at 0.5
+    label = CLASS_NAMES[int(prob >= 0.5)]
+    confidence = prob if label == "Dusty" else 1 - prob
+    bar_pct = int(confidence * 100)
 
-    if label == "Healthy":
-        score = raw
-    else:
-        score = 1 - raw
-
-    pct = int(score * 100)
-
-    # ── Result strip ──────────────────────────────────────────────────────────
-    if label == "Healthy":
+    if label == "Clean":
         st.markdown(f"""
-        <div class="panel">
-            <div class="panel-result panel-result-healthy">
-                <div class="result-icon">✅</div>
-                <div class="result-text">
-                    <div class="result-eyebrow eyebrow-healthy">✓ Classification result</div>
-                    <div class="result-diagnosis diag-healthy">Healthy Skin</div>
-                    <div class="meter-wrap">
-                        <div class="meter-fill fill-healthy" style="width:{pct}%"></div>
-                    </div>
-                    <div class="score-row">
-                        <div class="score-val score-healthy">{score:.4f}</div>
-                        <div class="score-sub">Confidence · {pct}%</div>
-                    </div>
+        <div class="result-card result-clean">
+            <div class="result-status">● Diagnosis complete</div>
+            <div class="result-label">Clean Panel</div>
+            <div class="metrics-row">
+                <div class="metric-block">
+                    <span class="metric-value">{confidence:.4f}</span>
+                    <span class="metric-label">Confidence</span>
                 </div>
+                <div class="metric-block">
+                    <span class="metric-value">{bar_pct}%</span>
+                    <span class="metric-label">Clean probability</span>
+                </div>
+            </div>
+            <div class="confidence-bar-track">
+                <div class="confidence-bar-fill-clean" style="width:{bar_pct}%"></div>
             </div>
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown(f"""
-        <div class="panel">
-            <div class="panel-result panel-result-vitiligo">
-                <div class="result-icon">⚠️</div>
-                <div class="result-text">
-                    <div class="result-eyebrow eyebrow-vitiligo">⚠ Classification result</div>
-                    <div class="result-diagnosis diag-vitiligo">Vitiligo Detected</div>
-                    <div class="meter-wrap">
-                        <div class="meter-fill fill-vitiligo" style="width:{pct}%"></div>
-                    </div>
-                    <div class="score-row">
-                        <div class="score-val score-vitiligo">{score:.4f}</div>
-                        <div class="score-sub">Confidence · {pct}%</div>
-                    </div>
+        <div class="result-card result-dusty">
+            <div class="result-status">⚠ Dust accumulation detected</div>
+            <div class="result-label">Dusty Panel</div>
+            <div class="metrics-row">
+                <div class="metric-block">
+                    <span class="metric-value">{confidence:.4f}</span>
+                    <span class="metric-label">Confidence</span>
                 </div>
+                <div class="metric-block">
+                    <span class="metric-value">{bar_pct}%</span>
+                    <span class="metric-label">Dusty probability</span>
+                </div>
+            </div>
+            <div class="confidence-bar-track">
+                <div class="confidence-bar-fill-dusty" style="width:{bar_pct}%"></div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class="disclaimer">
-        <strong>Notice:</strong> This tool is for research and educational purposes only.
-        It is not a substitute for professional medical diagnosis.
-        Always consult a qualified dermatologist.
-    </div>
-    """, unsafe_allow_html=True)
-
-# ── Footer ────────────────────────────────────────────────────────────────────
-st.markdown("""
-<div class="footer-row">
-    <div class="footer-left">Transfer Learning · MobileNetV3Small</div>
-    <div class="footer-right">96.9% accuracy</div>
-</div>
-""", unsafe_allow_html=True)
+# ── Footer ─────────────────────────────────────────────────────────────────────
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
+st.markdown(
+    '<div class="footer">Binary CNN · Solar Panel Dataset · Sigmoid Output</div>',
+    unsafe_allow_html=True,
+)
